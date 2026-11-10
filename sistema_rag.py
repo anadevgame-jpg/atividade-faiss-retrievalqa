@@ -17,7 +17,6 @@ Uso:
 """
 
 import argparse
-import shutil
 from pathlib import Path
 
 from langchain_community.document_loaders import TextLoader
@@ -83,10 +82,11 @@ def criar_banco_vetorial(chunks, embeddings):
 
 def carregar_ou_criar_banco(embeddings, recriar=False):
     """Usa o banco salvo se ele já existir; se não, cria um novo."""
-    if recriar and PASTA_INDICE.exists():
-        shutil.rmtree(PASTA_INDICE)
+    # Confere se o arquivo do índice existe (e não só a pasta).
+    # Com --recriar, o banco é gerado de novo e os arquivos são sobrescritos.
+    indice_existe = (PASTA_INDICE / "index.faiss").exists()
 
-    if PASTA_INDICE.exists():
+    if indice_existe and not recriar:
         db = FAISS.load_local(
             str(PASTA_INDICE),
             embeddings,
@@ -118,6 +118,9 @@ PROMPT = PromptTemplate(
 
 def criar_qa_chain(db):
     """Liga o RetrievalQA ao banco vetorial FAISS."""
+    # temperature=0: o modelo pega sempre as palavras mais prováveis, então a
+    # resposta fica mais conservadora e fiel ao texto (temperaturas altas,
+    # perto de 2, deixam o texto "criativo" demais e até incompreensível)
     llm = OllamaLLM(model=MODELO_LLM, temperature=0)
     retriever = db.as_retriever(search_kwargs={"k": K_DOCUMENTOS})
 
